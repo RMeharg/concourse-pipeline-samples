@@ -1,5 +1,6 @@
 #!/bin/bash
 set -eu
+set -x
 
 # script expects to have access to a directory/filename called `nsxv-pool-data/pool_config.yml`
 # containing the following parameters:
@@ -21,6 +22,8 @@ main() {
   POOL_NAME_PREFIX=$(getYamlPropertyValue "pool-name-prefix" "$pool_config_file")
 
   # POOL_IPS parsed example =( 192.168.28.101 192.168.28.102 192.168.28.103 )
+  echo "DEBUG: THESE ARE THE POOL IPS"
+  echo $POOL_IPS
 
   # generated params
   # Vsphere Settings
@@ -49,10 +52,12 @@ use_backend ${POOL_NAME} if host_${APPLICATION_NAME}
 EOF
 
   # create lb pool
+  echo "DEBUG: CREATE LB POOL"
   pynsxvg lb add_pool -n $NSX_EDGE_GEN_NAME \
     --pool_name ${POOL_NAME} \
     --algorithm round-robin \
     --monitor default_tcp_monitor
+  echo "DEBUG: ADD MEMBERS TO POOL"
   # add members to pool
   for ip in ${POOL_IPS[@]}
   do
@@ -66,12 +71,14 @@ EOF
       --weight 1
   done
 
+  echo "DEBUG: ADD RULE"
   pynsxvg lb add_rule \
     -n $NSX_EDGE_GEN_NAME \
     -rn ${RULE_NAME} \
     -rs "$(cat app_rule)"
 
   # create lb vip and add rules to it
+  echo "DEBUG: ADD VIP"
   pynsxvg lb add_vip \
    -n $NSX_EDGE_GEN_NAME \
    --vip_name $NSX_EDGE_GEN_VIP_NAME \
@@ -82,6 +89,7 @@ EOF
    --port $NSX_EDGE_GEN_VIP_PORT
 
   if [[ "$NSX_EDGE_GEN_ADD_RULE_TO_VIP" == "true" ]]; then
+  echo "DEBUG: ADD RULE TO VIP"
     pynsxvg lb add_rule_to_vip \
      -n $NSX_EDGE_GEN_NAME \
      --vip_name "$NSX_EDGE_GEN_VIP_NAME" \
